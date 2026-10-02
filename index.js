@@ -18,6 +18,7 @@ const uint = (exports.uint = {
     state.end += n <= 0xfc ? 1 : n <= 0xffff ? 3 : n <= 0xffffffff ? 5 : 9
   },
   encode(state, n) {
+    validateUint(n)
     if (n <= 0xfc) uint8.encode(state, n)
     else if (n <= 0xffff) {
       state.buffer[state.start++] = 0xfd
@@ -44,8 +45,7 @@ const uint8 = (exports.uint8 = {
     state.end += 1
   },
   encode(state, n) {
-    validateWidth(n, 0xff)
-    state.buffer[state.start++] = n
+    writeUint8(state, validateWidth(n, 0xff))
   },
   decode(state) {
     if (state.start >= state.end) throw new Error('Out of bounds')
@@ -58,9 +58,7 @@ const uint16 = (exports.uint16 = {
     state.end += 2
   },
   encode(state, n) {
-    validateWidth(n, 0xffff)
-    state.buffer[state.start++] = n
-    state.buffer[state.start++] = n >>> 8
+    writeUint16(state, validateWidth(n, 0xffff))
   },
   decode(state) {
     if (state.end - state.start < 2) throw new Error('Out of bounds')
@@ -73,10 +71,7 @@ const uint24 = (exports.uint24 = {
     state.end += 3
   },
   encode(state, n) {
-    validateWidth(n, 0xffffff)
-    state.buffer[state.start++] = n
-    state.buffer[state.start++] = n >>> 8
-    state.buffer[state.start++] = n >>> 16
+    writeUint24(state, validateWidth(n, 0xffffff))
   },
   decode(state) {
     if (state.end - state.start < 3) throw new Error('Out of bounds')
@@ -93,11 +88,7 @@ const uint32 = (exports.uint32 = {
     state.end += 4
   },
   encode(state, n) {
-    validateWidth(n, 0xffffffff)
-    state.buffer[state.start++] = n
-    state.buffer[state.start++] = n >>> 8
-    state.buffer[state.start++] = n >>> 16
-    state.buffer[state.start++] = n >>> 24
+    writeUint32(state, validateWidth(n, 0xffffffff))
   },
   decode(state) {
     if (state.end - state.start < 4) throw new Error('Out of bounds')
@@ -115,11 +106,7 @@ const uint32be = (exports.uint32be = {
     state.end += 4
   },
   encode(state, n) {
-    validateWidth(n, 0xffffffff)
-    state.buffer[state.start++] = n >>> 24
-    state.buffer[state.start++] = n >>> 16
-    state.buffer[state.start++] = n >>> 8
-    state.buffer[state.start++] = n
+    writeUint32be(state, validateWidth(n, 0xffffffff))
   },
   decode(state) {
     if (state.end - state.start < 4) throw new Error('Out of bounds')
@@ -139,8 +126,8 @@ const uint40 = (exports.uint40 = {
   encode(state, n) {
     validateWidth(n, 0xffffffffff)
     const r = Math.floor(n / 0x100)
-    uint8.encode(state, n % 0x100)
-    uint32.encode(state, r)
+    writeUint8(state, n)
+    writeUint32(state, r)
   },
   decode(state) {
     if (state.end - state.start < 5) throw new Error('Out of bounds')
@@ -155,8 +142,8 @@ const uint48 = (exports.uint48 = {
   encode(state, n) {
     validateWidth(n, 0xffffffffffff)
     const r = Math.floor(n / 0x10000)
-    uint16.encode(state, n % 0x10000)
-    uint32.encode(state, r)
+    writeUint16(state, n)
+    writeUint32(state, r)
   },
   decode(state) {
     if (state.end - state.start < 6) throw new Error('Out of bounds')
@@ -171,8 +158,8 @@ const uint56 = (exports.uint56 = {
   encode(state, n) {
     validateUint(n)
     const r = Math.floor(n / 0x1000000)
-    uint24.encode(state, n % 0x1000000)
-    uint32.encode(state, r)
+    writeUint24(state, n)
+    writeUint32(state, r)
   },
   decode(state) {
     if (state.end - state.start < 7) throw new Error('Out of bounds')
@@ -187,8 +174,8 @@ const uint64 = (exports.uint64 = {
   encode(state, n) {
     validateUint(n)
     const r = Math.floor(n / 0x100000000)
-    uint32.encode(state, n % 0x100000000)
-    uint32.encode(state, r)
+    writeUint32(state, n)
+    writeUint32(state, r)
   },
   decode(state) {
     if (state.end - state.start < 8) throw new Error('Out of bounds')
@@ -203,8 +190,8 @@ exports.uint64be = {
   encode(state, n) {
     validateUint(n)
     const r = Math.floor(n / 0x100000000)
-    uint32be.encode(state, r)
-    uint32be.encode(state, n % 0x100000000)
+    writeUint32be(state, r)
+    writeUint32be(state, n)
   },
   decode(state) {
     if (state.end - state.start < 8) throw new Error('Out of bounds')
@@ -1195,6 +1182,35 @@ function validateInt(n) {
   if (n >= MIN_SAFE_INT && n <= MAX_SAFE_INT) return n // Handles NaN as well
 
   throw outsideIntRange()
+}
+
+function writeUint8(state, n) {
+  state.buffer[state.start++] = n
+}
+
+function writeUint16(state, n) {
+  state.buffer[state.start++] = n
+  state.buffer[state.start++] = n >>> 8
+}
+
+function writeUint24(state, n) {
+  state.buffer[state.start++] = n
+  state.buffer[state.start++] = n >>> 8
+  state.buffer[state.start++] = n >>> 16
+}
+
+function writeUint32(state, n) {
+  state.buffer[state.start++] = n
+  state.buffer[state.start++] = n >>> 8
+  state.buffer[state.start++] = n >>> 16
+  state.buffer[state.start++] = n >>> 24
+}
+
+function writeUint32be(state, n) {
+  state.buffer[state.start++] = n >>> 24
+  state.buffer[state.start++] = n >>> 16
+  state.buffer[state.start++] = n >>> 8
+  state.buffer[state.start++] = n
 }
 
 function validateWidth(n, max) {

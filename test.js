@@ -239,6 +239,25 @@ test('a fixed-width int refuses a value its width cannot hold', function (t) {
   }
 })
 
+test('a wide fixed-width codec is bounded by its own width alone', function (t) {
+  const values = {
+    uint40: 255.5,
+    uint48: 65535.5,
+    uint56: 16777215.5,
+    uint64: 4294967295.5,
+    uint64be: 4294967295.5,
+    uint: 4294967295.5
+  }
+
+  for (const [name, n] of Object.entries(values)) {
+    t.execution(() => enc.encode(enc[name], n), name)
+  }
+})
+
+test('uint refuses a negative value against its own range', function (t) {
+  t.exception.all(() => enc.encode(enc.uint, -1), /use biguint/)
+})
+
 test('integers beyond the safe range throw instead of silently corrupting', function (t) {
   // The safe-integer boundary still encodes and round-trips.
   const state = enc.state()
