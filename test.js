@@ -229,14 +229,6 @@ test('integers beyond the safe range throw instead of silently corrupting', func
   })
 })
 
-test('a value outside the range refuses with a RangeError', function (t) {
-  t.exception.all(() => enc.encode(enc.uint, 2 ** 53), { name: 'RangeError' })
-  t.exception.all(() => enc.encode(enc.int, MAX_SAFE_INT + 1), { name: 'RangeError' })
-  t.exception.all(() => enc.decode(enc.uint64, uint64(FIRST_UNSAFE_INTEGER, true)), {
-    name: 'RangeError'
-  })
-})
-
 test('int rejects values outside the range it can carry', function (t) {
   const state = enc.state(0, 64, b4a.alloc(64))
 
