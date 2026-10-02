@@ -258,13 +258,13 @@ exports.bigint64 = zigZagBigInt(biguint64)
 const biguint = (exports.biguint = {
   preencode(state, n) {
     let len = 0
-    for (let m = n; m; m = m >> 64n) len++
+    for (let m = validateBigUint(n); m; m = m >> 64n) len++
     uint.preencode(state, len)
     state.end += 8 * len
   },
   encode(state, n) {
     let len = 0
-    for (let m = n; m; m = m >> 64n) len++
+    for (let m = validateBigUint(n); m; m = m >> 64n) len++
     uint.encode(state, len)
     const view = viewOf(state.buffer)
     for (let m = n, i = state.start; m; m = m >> 64n, i += 8) {
@@ -1197,6 +1197,12 @@ function validateInt(n) {
   throw outsideIntRange()
 }
 
+function validateBigUint(n) {
+  if (n >= 0n) return n
+
+  throw negativeBigUint()
+}
+
 // The validations above sit on the hottest paths in the library and are small
 // enough to be inlined, which building a message inline would put a stop to.
 // Kept out here, the message costs nothing until it is actually thrown.
@@ -1207,4 +1213,8 @@ function outsideUintRange() {
 
 function outsideIntRange() {
   return new Error(`int must be between ${MIN_SAFE_INT} and ${MAX_SAFE_INT}, use bigint`)
+}
+
+function negativeBigUint() {
+  return new RangeError('biguint must not be negative')
 }
