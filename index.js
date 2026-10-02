@@ -44,7 +44,7 @@ const uint8 = (exports.uint8 = {
     state.end += 1
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xff)
     state.buffer[state.start++] = n
   },
   decode(state) {
@@ -58,7 +58,7 @@ const uint16 = (exports.uint16 = {
     state.end += 2
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xffff)
     state.buffer[state.start++] = n
     state.buffer[state.start++] = n >>> 8
   },
@@ -73,7 +73,7 @@ const uint24 = (exports.uint24 = {
     state.end += 3
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xffffff)
     state.buffer[state.start++] = n
     state.buffer[state.start++] = n >>> 8
     state.buffer[state.start++] = n >>> 16
@@ -93,7 +93,7 @@ const uint32 = (exports.uint32 = {
     state.end += 4
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xffffffff)
     state.buffer[state.start++] = n
     state.buffer[state.start++] = n >>> 8
     state.buffer[state.start++] = n >>> 16
@@ -115,7 +115,7 @@ const uint32be = (exports.uint32be = {
     state.end += 4
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xffffffff)
     state.buffer[state.start++] = n >>> 24
     state.buffer[state.start++] = n >>> 16
     state.buffer[state.start++] = n >>> 8
@@ -137,9 +137,9 @@ const uint40 = (exports.uint40 = {
     state.end += 5
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xffffffffff)
     const r = Math.floor(n / 0x100)
-    uint8.encode(state, n)
+    uint8.encode(state, n % 0x100)
     uint32.encode(state, r)
   },
   decode(state) {
@@ -153,9 +153,9 @@ const uint48 = (exports.uint48 = {
     state.end += 6
   },
   encode(state, n) {
-    validateUint(n)
+    validateWidth(n, 0xffffffffffff)
     const r = Math.floor(n / 0x10000)
-    uint16.encode(state, n)
+    uint16.encode(state, n % 0x10000)
     uint32.encode(state, r)
   },
   decode(state) {
@@ -171,7 +171,7 @@ const uint56 = (exports.uint56 = {
   encode(state, n) {
     validateUint(n)
     const r = Math.floor(n / 0x1000000)
-    uint24.encode(state, n)
+    uint24.encode(state, n % 0x1000000)
     uint32.encode(state, r)
   },
   decode(state) {
@@ -187,7 +187,7 @@ const uint64 = (exports.uint64 = {
   encode(state, n) {
     validateUint(n)
     const r = Math.floor(n / 0x100000000)
-    uint32.encode(state, n)
+    uint32.encode(state, n % 0x100000000)
     uint32.encode(state, r)
   },
   decode(state) {
@@ -204,7 +204,7 @@ exports.uint64be = {
     validateUint(n)
     const r = Math.floor(n / 0x100000000)
     uint32be.encode(state, r)
-    uint32be.encode(state, n)
+    uint32be.encode(state, n % 0x100000000)
   },
   decode(state) {
     if (state.end - state.start < 8) throw new Error('Out of bounds')
@@ -1197,6 +1197,12 @@ function validateInt(n) {
   throw outsideIntRange()
 }
 
+function validateWidth(n, max) {
+  if (n >= 0 && n <= max) return n // Handles NaN as well
+
+  throw outsideWidth(max)
+}
+
 // The validations above sit on the hottest paths in the library and are small
 // enough to be inlined, which building a message inline would put a stop to.
 // Kept out here, the message costs nothing until it is actually thrown.
@@ -1207,4 +1213,8 @@ function outsideUintRange() {
 
 function outsideIntRange() {
   return new Error(`int must be between ${MIN_SAFE_INT} and ${MAX_SAFE_INT}, use bigint`)
+}
+
+function outsideWidth(max) {
+  return new RangeError(`value must be between 0 and ${max}`)
 }

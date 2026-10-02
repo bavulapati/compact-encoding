@@ -196,6 +196,49 @@ test('int', function (t) {
   t.exception(() => enc.int.decode(state))
 })
 
+test('a fixed-width uint refuses a value its width cannot hold', function (t) {
+  const widths = {
+    uint8: 8,
+    uint16: 16,
+    uint24: 24,
+    uint32: 32,
+    uint32be: 32,
+    uint40: 40,
+    uint48: 48
+  }
+
+  for (const [name, bits] of Object.entries(widths)) {
+    const max = 2 ** bits - 1
+    t.is(
+      enc.decode(enc[name], enc.encode(enc[name], max)),
+      max,
+      name + ' carries its largest value'
+    )
+    t.exception.all(() => enc.encode(enc[name], max + 1), { name: 'RangeError' }, name)
+  }
+})
+
+test('a fixed-width int refuses a value its width cannot hold', function (t) {
+  const widths = { int8: 8, int16: 16, int24: 24, int32: 32, int40: 40, int48: 48 }
+
+  for (const [name, bits] of Object.entries(widths)) {
+    const max = 2 ** (bits - 1) - 1
+    const min = -(2 ** (bits - 1))
+    t.is(
+      enc.decode(enc[name], enc.encode(enc[name], max)),
+      max,
+      name + ' carries its largest value'
+    )
+    t.is(
+      enc.decode(enc[name], enc.encode(enc[name], min)),
+      min,
+      name + ' carries its smallest value'
+    )
+    t.exception.all(() => enc.encode(enc[name], max + 1), { name: 'RangeError' }, name)
+    t.exception.all(() => enc.encode(enc[name], min - 1), { name: 'RangeError' }, name)
+  }
+})
+
 test('integers beyond the safe range throw instead of silently corrupting', function (t) {
   // The safe-integer boundary still encodes and round-trips.
   const state = enc.state()
