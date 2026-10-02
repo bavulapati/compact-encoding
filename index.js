@@ -229,6 +229,7 @@ const biguint64 = (exports.biguint64 = {
     state.end += 8
   },
   encode(state, n) {
+    validateBigWidth(n, 0xffffffffffffffffn)
     viewOf(state.buffer).setBigUint64(state.start, n, true) // little endian
     state.start += 8
   },
@@ -1215,6 +1216,12 @@ function writeUint32be(state, n) {
 
 function validateWidth(n, max) {
   if (n >= 0 && n <= max) return n // Handles NaN as well
+
+  throw outsideWidth(max)
+}
+
+function validateBigWidth(n, max) {
+  if (n >= 0n && n <= max) return n
 
   throw outsideWidth(max)
 }
