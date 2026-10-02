@@ -209,17 +209,32 @@ test('integers beyond the safe range throw instead of silently corrupting', func
 
   // Beyond it, encoding uint and zig-zag int codecs rejects rather than misrounds.
   const big = enc.state(0, 64, b4a.alloc(64))
-  t.exception(() => enc.uint64.encode(big, Number.MAX_SAFE_INTEGER + 1))
-  t.exception(() => enc.int56.encode(big, -(2 ** 53 - 1)))
-  t.exception(() => enc.int.encode(big, 2 ** 53))
+  t.exception.all(() => enc.uint64.encode(big, Number.MAX_SAFE_INTEGER + 1), { name: 'RangeError' })
+  t.exception.all(() => enc.int56.encode(big, -(2 ** 53 - 1)), { name: 'RangeError' })
+  t.exception.all(() => enc.int.encode(big, 2 ** 53), { name: 'RangeError' })
 
   // Decoding the same first unsafe integer rejects instead of returning an unsafe Number.
-  t.exception(() =>
-    enc.uint.decode(enc.state(0, 9, b4a.concat([b4a.from([0xff]), uint64(unsafe, true)])))
+  t.exception.all(
+    () => enc.uint.decode(enc.state(0, 9, b4a.concat([b4a.from([0xff]), uint64(unsafe, true)]))),
+    { name: 'RangeError' }
   )
-  t.exception(() => enc.uint56.decode(enc.state(0, 7, uint64(unsafe, true).subarray(0, 7))))
-  t.exception(() => enc.uint64.decode(enc.state(0, 8, uint64(unsafe, true))))
-  t.exception(() => enc.uint64be.decode(enc.state(0, 8, uint64(unsafe, false))))
+  t.exception.all(() => enc.uint56.decode(enc.state(0, 7, uint64(unsafe, true).subarray(0, 7))), {
+    name: 'RangeError'
+  })
+  t.exception.all(() => enc.uint64.decode(enc.state(0, 8, uint64(unsafe, true))), {
+    name: 'RangeError'
+  })
+  t.exception.all(() => enc.uint64be.decode(enc.state(0, 8, uint64(unsafe, false))), {
+    name: 'RangeError'
+  })
+})
+
+test('a value outside the range refuses with a RangeError', function (t) {
+  t.exception.all(() => enc.encode(enc.uint, 2 ** 53), { name: 'RangeError' })
+  t.exception.all(() => enc.encode(enc.int, MAX_SAFE_INT + 1), { name: 'RangeError' })
+  t.exception.all(() => enc.decode(enc.uint64, uint64(FIRST_UNSAFE_INTEGER, true)), {
+    name: 'RangeError'
+  })
 })
 
 test('int rejects values outside the range it can carry', function (t) {
@@ -230,19 +245,19 @@ test('int rejects values outside the range it can carry', function (t) {
   t.is(enc.decode(enc.int, enc.encode(enc.int, MAX_SAFE_INT)), MAX_SAFE_INT)
   t.is(enc.decode(enc.int, enc.encode(enc.int, MIN_SAFE_INT)), MIN_SAFE_INT)
 
-  t.exception(() => enc.int.encode(state, MAX_SAFE_INT + 1), /use bigint/)
-  t.exception(() => enc.int.encode(state, MIN_SAFE_INT - 1), /use bigint/)
-  t.exception(() => enc.int.encode(state, Number.MAX_SAFE_INTEGER), /use bigint/)
-  t.exception(() => enc.int.encode(state, Number.MIN_SAFE_INTEGER), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, MAX_SAFE_INT + 1), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, MIN_SAFE_INT - 1), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, Number.MAX_SAFE_INTEGER), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, Number.MIN_SAFE_INTEGER), /use bigint/)
 
   // Values with no integer to write are turned away by the same check.
-  t.exception(() => enc.int.encode(state, Infinity), /use bigint/)
-  t.exception(() => enc.int.encode(state, -Infinity), /use bigint/)
-  t.exception(() => enc.int.encode(state, NaN), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, Infinity), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, -Infinity), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, NaN), /use bigint/)
 
   // The rejection lands before any space is reserved for the value.
   const empty = enc.state()
-  t.exception(() => enc.int.preencode(empty, MAX_SAFE_INT + 1))
+  t.exception.all(() => enc.int.preencode(empty, MAX_SAFE_INT + 1), { name: 'RangeError' })
   t.is(empty.end, 0)
 })
 
