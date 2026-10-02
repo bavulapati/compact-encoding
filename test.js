@@ -218,6 +218,10 @@ test('integers beyond the safe range throw instead of silently corrupting', func
     () => enc.uint.decode(enc.state(0, 9, b4a.concat([b4a.from([0xff]), uint64(unsafe, true)]))),
     { name: 'RangeError' }
   )
+  t.exception.all(
+    () => enc.int.decode(enc.state(0, 9, b4a.concat([b4a.from([0xff]), uint64(unsafe, true)]))),
+    { name: 'RangeError' }
+  )
   t.exception.all(() => enc.uint56.decode(enc.state(0, 7, uint64(unsafe, true).subarray(0, 7))), {
     name: 'RangeError'
   })
@@ -229,6 +233,14 @@ test('integers beyond the safe range throw instead of silently corrupting', func
   })
 })
 
+test('uint rejects a negative value', function (t) {
+  const state = enc.state(0, 64, b4a.alloc(64))
+
+  t.exception.all(() => enc.uint.encode(state, -1), { name: 'RangeError' })
+  t.exception.all(() => enc.uint8.encode(state, -1), { name: 'RangeError' })
+  t.exception.all(() => enc.uint64.encode(state, -1), { name: 'RangeError' })
+})
+
 test('int rejects values outside the range it can carry', function (t) {
   const state = enc.state(0, 64, b4a.alloc(64))
 
@@ -237,15 +249,33 @@ test('int rejects values outside the range it can carry', function (t) {
   t.is(enc.decode(enc.int, enc.encode(enc.int, MAX_SAFE_INT)), MAX_SAFE_INT)
   t.is(enc.decode(enc.int, enc.encode(enc.int, MIN_SAFE_INT)), MIN_SAFE_INT)
 
-  t.exception.all(() => enc.int.encode(state, MAX_SAFE_INT + 1), /use bigint/)
-  t.exception.all(() => enc.int.encode(state, MIN_SAFE_INT - 1), /use bigint/)
-  t.exception.all(() => enc.int.encode(state, Number.MAX_SAFE_INTEGER), /use bigint/)
-  t.exception.all(() => enc.int.encode(state, Number.MIN_SAFE_INTEGER), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, MAX_SAFE_INT + 1), {
+    name: 'RangeError',
+    message: /use bigint/
+  })
+  t.exception.all(() => enc.int.encode(state, MIN_SAFE_INT - 1), {
+    name: 'RangeError',
+    message: /use bigint/
+  })
+  t.exception.all(() => enc.int.encode(state, Number.MAX_SAFE_INTEGER), {
+    name: 'RangeError',
+    message: /use bigint/
+  })
+  t.exception.all(() => enc.int.encode(state, Number.MIN_SAFE_INTEGER), {
+    name: 'RangeError',
+    message: /use bigint/
+  })
 
   // Values with no integer to write are turned away by the same check.
-  t.exception.all(() => enc.int.encode(state, Infinity), /use bigint/)
-  t.exception.all(() => enc.int.encode(state, -Infinity), /use bigint/)
-  t.exception.all(() => enc.int.encode(state, NaN), /use bigint/)
+  t.exception.all(() => enc.int.encode(state, Infinity), {
+    name: 'RangeError',
+    message: /use bigint/
+  })
+  t.exception.all(() => enc.int.encode(state, -Infinity), {
+    name: 'RangeError',
+    message: /use bigint/
+  })
+  t.exception.all(() => enc.int.encode(state, NaN), { name: 'RangeError', message: /use bigint/ })
 
   // The rejection lands before any space is reserved for the value.
   const empty = enc.state()
